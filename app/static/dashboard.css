@@ -1,0 +1,82 @@
+body {
+    display: flex;
+    flex-flow: column nowrap;
+    /*flex-flow: row wrap;*/
+}
+
+/*header {*/
+/*    flex: 0 1;*/
+/*}*/
+
+.container {
+    flex: 1 1;
+    min-height: 0;
+    /*overflow: auto;*/
+
+    display: flex;
+    gap: var(--space-06);
+    padding-inline-end: var(--space-06); /* no padding on start cause that's navbar's which must stick */
+}
+
+
+@keyframes view-down {
+    49% {
+        opacity: 0;
+        transform: translate3d(0, 2%, 0);
+    }
+    50% {
+        transform: translate3d(0, -2%, 0);
+    }
+    100% {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+    }
+}
+@keyframes view-up {
+    49% {
+        transform: translate3d(0, -2%, 0);
+    }
+    50% {
+        opacity: 0;
+        transform: translate3d(0, 2%, 0);
+    }
+    100% {
+        transform: translate3d(0, 0, 0);
+        opacity: 1;
+    }
+}
+body.view-down, body.view-up {
+    .container {
+        overflow-y: hidden;
+    }
+
+    main {
+        animation-duration: 400ms;
+        animation-fill-mode: forwards;
+    }
+}
+
+body.view-down main {
+    animation-name: view-down;
+}
+body.view-up main {
+    animation-name: view-up;
+}
+
+main {
+    flex: 1 1;
+    display: flex;
+    padding-top: var(--space-06);
+    padding-bottom: var(--space-06);
+}
+
+section#allPosts {
+    flex: 1 1;
+}
+
+/* LAPTOP */
+@media screen and (width < 1025px){
+    .container {
+        padding-inline-start: var(--space-06);
+    }
+}

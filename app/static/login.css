@@ -1,0 +1,38 @@
+main {
+    height: 100%;
+}
+
+/* Ultrawide */
+@media screen and (width > 1440px) {
+    section {
+        width: 32em;
+    }
+}
+
+/* Laptop L */
+@media screen and (1440px > width > 1024px) {
+    section {
+        width: 30%;
+    }
+}
+
+/* Laptop */
+@media screen and (1024px > width > 768px) {
+    section {
+        width: 45%;
+    }
+}
+
+/* Tablet */
+@media screen and (768px > width > 425px) {
+    section {
+        width: 80%;
+    }
+}
+
+/* Mobile L*/
+@media screen and (425px > width) {
+    section {
+        width: 95%;
+    }
+}

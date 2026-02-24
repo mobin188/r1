@@ -1,0 +1,20 @@
+{% extends "user-layout.html" %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block script %}
+    <script type="module" src="{{ url_for('static', filename='articles.mjs') }}"></script>
+{% endblock %}
+
+{% block content %}
+    <section id="allPosts">
+        <div class="header">
+            <h3>All Posts</h3>
+        </div>
+        <div class="body">
+            <article-table page="1"></article-table>
+        </div>
+    </section>
+{% endblock %}

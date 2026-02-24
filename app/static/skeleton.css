@@ -1,0 +1,102 @@
+/* SKELETON */
+component-input:not(:defined),
+component-button:not(:defined) {
+    height: 2.5em;
+    border-radius: var(--borderRadiusMd);
+    background: #ccc;
+    color: rgba(0, 0, 0, 0);
+}
+
+component-input:not(:defined) {
+    position: relative;
+
+    &[label] {
+        margin-top: 2em;
+
+        &:before {
+            content: attr(label);
+            position: absolute;
+            top: -80%;
+            left: 0;
+
+            border-radius: var(--borderRadiusMd);
+            background: #ccc;
+        }
+    }
+}
+
+component-header:not(:defined) {
+    display: block;
+    height: 4em;
+    background-color: var(--bg-neutral-default-1-l);
+}
+
+component-navbar:not(:defined) {
+    display: flex;
+    flex-flow: column nowrap;
+    gap: var(--space-01);
+    width: 17%;
+    padding: var(--space-04);
+    background-color: var(--bg-neutral-default-1-l);
+
+    a.menu-item {
+        padding: var(--space-02);
+
+        span {
+            color: rgba(0, 0, 0, 0);
+            background: #ccc;
+        }
+    }
+}
+
+component-editor:not(:defined) {
+    flex: 1;
+    display: flex;
+    gap: var(--space-06);
+
+    &::before { /* editor section skeleton */
+        content: '';
+        display: inline-block;
+        flex: 2 1;
+        height: 75%;
+
+        background: #ffffff;
+        border-radius: var(--borderRadiusMd);
+    }
+
+    &::after { /* tags section skeleton */
+        content: '';
+        display: inline-block;
+        flex: 1 1;
+        height: 50%;
+
+        background: #ffffff;
+        border-radius: var(--borderRadiusMd);
+    }
+}
+
+component-modal:not(:defined) {
+    display: none;
+}
+
+/* LAPTOP */
+@media screen and (max-width: 1025px) {
+    component-navbar:not(:defined) {
+        position: fixed;
+        z-index: 1;
+        bottom: var(--space-03);
+        left: var(--space-03);
+
+        width: auto;
+        padding: var(--space-03);
+        flex-flow: row nowrap;
+        gap: var(--space-03);
+
+        box-shadow: 0 0 .5em .1em hsla(0, 0%, 0%, 0.2);
+        border-radius: var(--borderRadiusMd);
+
+        .menu-item {
+            padding: var(--space-01);
+        }
+    }
+}

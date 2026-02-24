@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta name="description" content="Arvan Login, Fastest CDN services in Asia"/>
+    <title>Dashboard | Arvan</title>
+    <meta name="theme-color" content="#009595">
+
+    <link rel="preload" type="text/css" as="style" href="{{ url_for('static', filename='skeleton.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='skeleton.css') }}">
+<!--    <meta http-equiv="Content-Security-Policy"-->
+<!--          content="-->
+<!--            default-src 'self';-->
+<!--            script-src 'self';-->
+<!--            style-src 'self' https://fonts.googleapis.com;-->
+<!--            font-src 'self' https://fonts.gstatic.com;-->
+<!--            connect-src https://api-3281216083-arvancloud-challenge.apps.ir-central1.arvancaas.ir;-->
+<!--            img-src 'self' data:;-->
+<!--            object-src 'none';-->
+<!--    ">-->
+
+    <script src="{{ url_for('static', filename='globalStyles.js') }}"></script>
+
+    <link rel="preload" type="text/css" as="style" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preload" type="text/css" as="style" href="{{ url_for('static', filename='dashboard.css') }}">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style"
+          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap"
+          rel="stylesheet">
+
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link type="text/css" rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+
+    <script type="module" src="{{ url_for('static', filename='dashboard.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='articles.mjs') }}"></script>
+<body>
+<component-toast id="toast"></component-toast>
+<component-modal id="modal">
+    <span slot="title"></span>
+    <span slot="caption"></span>
+    <span slot="message"></span>
+</component-modal>
+<header>
+    <component-header></component-header>
+</header>
+<div class="container">
+    <component-navbar>
+        <a href="/articles" data-route class="menu-item"><span>All Articles</span></a>
+        <a href="/articles/create" data-route class="menu-item"><span>New Article</span></a>
+    </component-navbar>
+    <main id="routerView" data-route-init>
+        <section id="allPosts">
+            <div class="header">
+                <h3>All Posts</h3>
+            </div>
+            <div class="body">
+                <article-table page="1"></article-table>
+            </div>
+        </section>
+    </main>
+</div>
+</body>
+</html>
