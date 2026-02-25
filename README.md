@@ -1,4 +1,4 @@
-# Arvancloud Challenge – RealWorld App
+# ArvanCloud Challenge – RealWorld App
 
 Modern full-stack article platform built with **Flask + Vanilla Web Components**.
 
@@ -8,7 +8,7 @@ Modern full-stack article platform built with **Flask + Vanilla Web Components**
 ## Quick Start
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/mobin188/r1
 cd arvancloud-challenge
 
 # Backend
