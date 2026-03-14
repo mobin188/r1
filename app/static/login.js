@@ -5,19 +5,11 @@ import {withSubmitLock, saveUserData, redirectIfAuthenticated} from "./utils/aut
 
 
 // import components
-// import "./component/globalStyles.mjs"
-
 import "./component/toast.mjs"
-// import {Toast} from "./component/toast.mjs"
-// customElements.define("component-toast", Toast)
 
 import "./component/input.mjs"
-// import {Input} from "./component/input.mjs"
-// customElements.define("component-input", Input)
 
 import "./component/button.mjs"
-// import {Button} from "./component/button.mjs"
-// customElements.define("component-button", Button)
 
 
 // login flow
@@ -53,7 +45,6 @@ formLogin.addEventListener("submit", withSubmitLock(formLogin, async (_, signal)
         const password = passwordInput.value.trim()
 
         // make request to the server
-        // const response = await fetch("https://api-3281216083-arvancloud-challenge.apps.ir-central1.arvancaas.ir/api/users/login", {
         const response = await fetch(`${config.API_BASE}/users/login`, {
             method: "POST",
             headers: {"Content-Type": "application/json"},
