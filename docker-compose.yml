@@ -1,0 +1,16 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"          # Access at http://localhost:5000
+    env_file:
+      - .env
+    environment:
+      - FLASK_DEBUG=1        # Enables debug mode + reloader
+      - FLASK_APP=run.py     # Or whatever your entry is (check run.py)
+    volumes:
+      - .:/app               # This is the magic for hot reload (live code sync)
+    # Dev command override (hot reload)
+    command: python run.py --host=0.0.0.0 --port=5000 --debug
