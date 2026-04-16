@@ -1,27 +1,28 @@
-# Use a slim Python image (matches your Ubuntu VPS later)
-FROM python:3.11-slim
+# === Builder stage (installs gcc + compiles packages) ===
+FROM python:3.11-slim AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Install system dependencies (if your app needs any, e.g., for certain packages)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements first for better caching
+# Create venv and install dependencies (cached if requirements.txt unchanged)
 COPY requirements.txt .
-
-# Create virtual environment and install dependencies
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the project (this gets overridden by volume in dev)
+# === Final runtime stage (slim, no gcc) ===
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Copy only the virtual environment from builder (much smaller & faster)
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy your app code
 COPY . .
 
-# Expose the port Flask runs on
 EXPOSE 5000
 
-# Use production WSGI entry by default (we'll override for dev)
+# For development (hot reload) we'll override this in docker-compose
 CMD ["gunicorn", "--config", "gunicorn_config.py", "wsgi:app"]
