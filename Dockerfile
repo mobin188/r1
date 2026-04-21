@@ -1,21 +1,21 @@
-# === Builder stage (installs gcc + compiles packages) ===
+# === Builder stage ===
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Create venv and install dependencies (cached if requirements.txt unchanged)
+# Create venv and install dependencies
 COPY requirements.txt .
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# === Final runtime stage (slim, no gcc) ===
+# === Final runtime stage ===
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy only the virtual environment from builder (much smaller & faster)
+# Copy only the virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
