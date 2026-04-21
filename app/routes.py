@@ -8,7 +8,7 @@ load_dotenv()
 bp = Blueprint('main', __name__, static_folder="static", template_folder="templates")
 
 # Real backend URL (from .env)
-API_BASE = os.getenv("API_BASE", "https://api.mobinjafari.com/realworld/api")
+API_BASE = os.getenv("API_BASE")
 
 
 @bp.route('/')
