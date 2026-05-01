@@ -1,15 +1,10 @@
 import os
-from flask import Blueprint, render_template, request, Response, redirect, current_app, jsonify
-import requests
-from dotenv import load_dotenv
-
-import os
 import uuid
 import time
 from urllib.parse import urljoin
 
 import requests
-from flask import Blueprint, current_app, jsonify, request, Response
+from flask import Blueprint, render_template, current_app, jsonify, request, Response, redirect
 from dotenv import load_dotenv
 
 load_dotenv()
