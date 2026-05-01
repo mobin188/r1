@@ -1,15 +1,20 @@
 import os
-from flask import Blueprint, render_template, request, Response, redirect
+from flask import Blueprint, render_template, request, Response, redirect, current_app, jsonify
 import requests
+from dotenv import load_dotenv
+
+import os
+import uuid
+import time
+from urllib.parse import urljoin
+
+import requests
+from flask import Blueprint, current_app, jsonify, request, Response
 from dotenv import load_dotenv
 
 load_dotenv()
 
 bp = Blueprint('main', __name__, static_folder="static", template_folder="templates")
-
-# Real backend URL (from .env)
-API_BASE = os.getenv("API_BASE")
-
 
 @bp.route('/')
 def index():
@@ -42,33 +47,185 @@ def edit(slug):
     return render_template("edit.html", slug=slug)
 
 
-# =============================================
-# Transparent API Proxy to Separate Backend
-# =============================================
-@bp.route("/api/<path:endpoint>", methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
-def proxy(endpoint):
-    """Proxy all /api/* calls to the external RealWorld backend.
-    This avoids CORS issues and keeps the real URL out of frontend code.
+# -----------------------------------------------------------------------------
+# CONFIG (backend-agnostic + future-proof)
+# -----------------------------------------------------------------------------
+
+PRIMARY_API = (os.getenv("API_BASE") or "").rstrip("/")
+FALLBACK_API = (os.getenv("API_FALLBACK") or "").rstrip("/")
+
+HOP_HEADERS = {
+    "host",
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailer",
+    "transfer-encoding",
+    "upgrade",
+    "content-length",
+    "content-encoding",
+}
+
+_session = requests.Session()
+
+
+# -----------------------------------------------------------------------------
+# HEALTH STATE (lightweight in-memory circuit behavior)
+# -----------------------------------------------------------------------------
+
+_backend_failures = {
+    "primary": {"count": 0, "last_fail": 0},
+    "fallback": {"count": 0, "last_fail": 0},
+}
+
+FAIL_THRESHOLD = 3
+COOLDOWN_SEC = 10
+
+
+# -----------------------------------------------------------------------------
+# UTILITIES
+# -----------------------------------------------------------------------------
+
+def _base_alive(name: str) -> bool:
+    state = _backend_failures[name]
+    if state["count"] < FAIL_THRESHOLD:
+        return True
+    return (time.time() - state["last_fail"]) > COOLDOWN_SEC
+
+
+def _record_failure(name: str):
+    state = _backend_failures[name]
+    state["count"] += 1
+    state["last_fail"] = time.time()
+
+
+def _record_success(name: str):
+    _backend_failures[name]["count"] = 0
+
+
+def _pick_backend():
     """
-    target_url = f"{API_BASE.rstrip('/')}/{endpoint.lstrip('/')}"
+    Simple failover strategy:
+    primary → fallback → primary
+    """
+    if PRIMARY_API and _base_alive("primary"):
+        return "primary", PRIMARY_API
 
-    resp = requests.request(
-        method=request.method,
-        url=target_url,
-        headers={k: v for k, v in request.headers if k.lower() not in ["host", "content-length"]},
-        data=request.get_data(),
-        cookies=request.cookies,
-        allow_redirects=False,
-        timeout=30,                    # Prevent hanging if backend is slow
-    )
+    if FALLBACK_API and _base_alive("fallback"):
+        return "fallback", FALLBACK_API
 
-    # Remove hop-by-hop headers
-    excluded_headers = {
-        "content-encoding", "transfer-encoding", "connection",
-        "keep-alive", "proxy-authenticate", "proxy-authorization",
-        "te", "trailers", "upgrade"
+    # fallback to primary anyway (last resort)
+    return "primary", PRIMARY_API
+
+
+def _build_url(base: str, path: str) -> str:
+    return urljoin(base + "/", path.lstrip("/"))
+
+
+def _clean_headers(headers):
+    return {
+        k: v
+        for k, v in headers.items()
+        if k.lower() not in HOP_HEADERS
     }
 
-    headers = [(k, v) for k, v in resp.headers.items() if k.lower() not in excluded_headers]
 
-    return Response(resp.content, resp.status_code, headers)
+def _trace_id():
+    return request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+
+def _log(level, msg, **data):
+    current_app.logger.info(
+        f"[{level}] {msg} | " +
+        " ".join(f"{k}={v}" for k, v in data.items())
+    )
+
+
+# -----------------------------------------------------------------------------
+# RESPONSE WRAPPER
+# -----------------------------------------------------------------------------
+
+def _to_response(upstream: requests.Response) -> Response:
+    resp = Response(upstream.content, status=upstream.status_code)
+
+    for k, v in upstream.headers.items():
+        if k.lower() not in HOP_HEADERS:
+            resp.headers[k] = v
+
+    return resp
+
+
+# -----------------------------------------------------------------------------
+# CORE PROXY
+# -----------------------------------------------------------------------------
+
+@bp.route("/api", defaults={"path": ""}, methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS","HEAD"])
+@bp.route("/api/<path:path>", methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS","HEAD"])
+def proxy(path):
+
+    trace_id = _trace_id()
+    backend_name, base = _pick_backend()
+    url = _build_url(base, path)
+
+    headers = _clean_headers(request.headers)
+    headers["X-Request-ID"] = trace_id
+
+    start = time.time()
+
+    try:
+        upstream = _session.request(
+            method=request.method,
+            url=url,
+            params=request.args,
+            data=request.get_data(cache=True),
+            headers=headers,
+            timeout=(3, 25),
+            allow_redirects=False,
+        )
+
+        latency = round(time.time() - start, 4)
+
+        if upstream.status_code >= 500:
+            _record_failure(backend_name)
+        else:
+            _record_success(backend_name)
+
+        _log(
+            "INFO",
+            "proxy_success",
+            trace_id=trace_id,
+            backend=backend_name,
+            status=upstream.status_code,
+            latency=latency,
+            path=path,
+        )
+
+        return _to_response(upstream)
+
+    except requests.Timeout:
+        _record_failure(backend_name)
+
+        _log(
+            "WARN",
+            "proxy_timeout",
+            trace_id=trace_id,
+            backend=backend_name,
+            path=path,
+        )
+
+        return jsonify(error="Upstream timeout", trace_id=trace_id), 504
+
+    except requests.RequestException:
+        _record_failure(backend_name)
+
+        _log(
+            "ERROR",
+            "proxy_failure",
+            trace_id=trace_id,
+            backend=backend_name,
+            path=path,
+        )
+
+        return jsonify(error="Upstream unavailable", trace_id=trace_id), 502
