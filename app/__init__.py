@@ -1,4 +1,5 @@
 from flask import Flask, request
+import time
 import logging
 import sys
 
@@ -23,6 +24,9 @@ def create_app():
     @app.before_request
     def log_request():
         app.logger.info("%s - %s %s", request.remote_addr, request.method, request.path)
+
+    # Record start time for uptime calculation
+    app._start_time = time.time()
 
     from .routes import bp
     app.register_blueprint(bp)

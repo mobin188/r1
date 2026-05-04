@@ -224,3 +224,40 @@ def proxy(path):
         )
 
         return jsonify(error="Upstream unavailable", trace_id=trace_id), 502
+
+# -----------------------------------------------------------------------------
+# HEALTH CHECK (Production Ready)
+# -----------------------------------------------------------------------------
+
+@bp.route('/health')
+def health():
+    """Lightweight health check endpoint for Docker, Nginx, monitoring, etc."""
+    try:
+        # Basic app health
+        health_status = {
+            "status": "healthy",
+            "service": "r1-flask",
+            "version": "1.0.0",                    # You can make this dynamic later
+            "timestamp": time.time(),
+            "uptime": round(time.time() - getattr(current_app, '_start_time', time.time()), 2),
+            "backend": {
+                "primary": PRIMARY_API or "not-configured",
+                "fallback": FALLBACK_API or None,
+            }
+        }
+
+        # Optional: Quick ping to primary backend
+        if PRIMARY_API:
+            try:
+                resp = _session.get(PRIMARY_API.rstrip('/') + "/api/articles?limit=1", timeout=3)
+                health_status["backend"]["primary_status"] = "reachable" if resp.status_code < 500 else "degraded"
+            except:
+                health_status["backend"]["primary_status"] = "unreachable"
+
+        return jsonify(health_status), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "unhealthy",
+            "error": str(e)
+        }), 500
