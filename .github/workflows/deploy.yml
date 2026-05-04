@@ -1,37 +1,11 @@
-name: CI/CD - Build & Deploy to VPS
+name: CI/CD - Deploy to Production
 
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  test-and-build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Build Docker image (CI check)
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          push: false
-          tags: ghcr.io/${{ github.repository_owner }}/r1:latest
-
   deploy:
-    needs: test-and-build
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +18,13 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             cd /var/www/r1
+
             git pull origin main
-            docker compose down --remove-orphans || true
-            docker compose up -d --build
-            echo "✅ Deployed successfully at $(date)"
+
+            # Stop old production container
+            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+
+            # Start production version
+            docker compose -f docker-compose.prod.yml up -d --build
+
+            echo "✅ Production deployed successfully at $(date)"

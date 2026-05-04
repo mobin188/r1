@@ -1,0 +1,13 @@
+# docker-compose.prod.yml
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    # Production command (Gunicorn)
+    command: gunicorn --config gunicorn_config.py wsgi:app
