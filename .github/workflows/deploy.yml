@@ -1,4 +1,4 @@
-name: CI/CD - Deploy to Production
+name: CI/CD - Production Deploy
 
 on:
   push:
@@ -8,38 +8,53 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Deploy to VPS
+      - name: 🚀 Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
+          timeout: 10m
           script: |
-            # Robust deployment script
-            echo "=== Starting deployment ==="
+            echo "========================================"
+            echo "🚀 Starting Full Production Deployment"
+            echo "========================================"
 
-            # Create directory if it doesn't exist
+            # Create project directory
             sudo mkdir -p /var/www/r1
-            sudo chown -R ubuntu:ubuntu /var/www/r1
-
+            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} /var/www/r1
             cd /var/www/r1
 
-            # Clone if directory is empty, otherwise pull
+            # Clone or Pull code
             if [ ! -d ".git" ]; then
-              echo "Cloning repository..."
+              echo "📥 Cloning repository..."
               git clone https://github.com/mobin188/r1.git .
             else
-              echo "Pulling latest changes..."
+              echo "📥 Pulling latest changes..."
               git pull origin main
             fi
 
-            # Deploy using production compose file
-            echo "Stopping old containers..."
+            # Ensure .env exists
+            if [ ! -f ".env" ]; then
+              echo "⚠️  .env file not found. Copying from example..."
+              cp .env.example .env
+              echo "Please edit /var/www/r1/.env with your SECRET_KEY and other settings!"
+            fi
+
+            # Fix Docker permissions
+            echo "🔧 Fixing Docker permissions..."
+            sudo usermod -aG docker ${{ secrets.VPS_USER }} || true
+
+            # Deploy using production compose
+            echo "🛑 Stopping old containers..."
             docker compose -f docker-compose.prod.yml down --remove-orphans || true
 
-            echo "Starting production containers..."
+            echo "🏗️  Building and starting production..."
             docker compose -f docker-compose.prod.yml up -d --build
 
-            echo "✅ Deployment completed successfully at $(date)"
+            echo "✅ Deployment completed at $(date)"
+            echo "🌐 Check status with: docker compose -f docker-compose.prod.yml ps"
+            echo "📊 Logs: docker compose -f docker-compose.prod.yml logs -f"

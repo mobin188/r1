@@ -1,13 +1,26 @@
-# docker-compose.prod.yml
 services:
   web:
     build:
       context: .
       dockerfile: Dockerfile
+    image: r1:latest
+    container_name: r1-web
+    restart: unless-stopped
     ports:
       - "5000:5000"
     env_file:
       - .env
-    restart: unless-stopped
-    # Production command (Gunicorn)
     command: gunicorn --config gunicorn_config.py wsgi:app
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
