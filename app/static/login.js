@@ -9,7 +9,6 @@ import "./component/toast.mjs"
 
 import "./component/input.mjs"
 
-import "./component/button.mjs"
 
 
 // login flow
