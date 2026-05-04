@@ -17,14 +17,29 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
+            # Robust deployment script
+            echo "=== Starting deployment ==="
+
+            # Create directory if it doesn't exist
+            sudo mkdir -p /var/www/r1
+            sudo chown -R ubuntu:ubuntu /var/www/r1
+
             cd /var/www/r1
 
-            git pull origin main
+            # Clone if directory is empty, otherwise pull
+            if [ ! -d ".git" ]; then
+              echo "Cloning repository..."
+              git clone https://github.com/mobin188/r1.git .
+            else
+              echo "Pulling latest changes..."
+              git pull origin main
+            fi
 
-            # Stop old production container
+            # Deploy using production compose file
+            echo "Stopping old containers..."
             docker compose -f docker-compose.prod.yml down --remove-orphans || true
 
-            # Start production version
+            echo "Starting production containers..."
             docker compose -f docker-compose.prod.yml up -d --build
 
-            echo "✅ Production deployed successfully at $(date)"
+            echo "✅ Deployment completed successfully at $(date)"
