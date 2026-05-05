@@ -1,3 +1,9 @@
-bind = "127.0.0.1:8001"
+bind = "0.0.0.0:8001"          # Listen on all interfaces
 workers = 3
+worker_class = "sync"
 timeout = 120
+keepalive = 30
+loglevel = "info"
+accesslog = "-"
+errorlog = "-"
+capture_output = True
