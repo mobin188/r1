@@ -54,6 +54,13 @@ REQUEST_EXCLUDED_HEADERS = {
     "connection",
     "content-length",
     "accept-encoding",
+
+    # Browser cache validation headers
+    "if-none-match",
+    "if-modified-since",
+    "if-match",
+    "if-unmodified-since",
+    "if-range",
 }
 
 RESPONSE_EXCLUDED_HEADERS = {
