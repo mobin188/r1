@@ -49,7 +49,14 @@ def edit(slug):
 PRIMARY_API = (os.getenv("API_BASE") or "").rstrip("/")
 FALLBACK_API = (os.getenv("API_FALLBACK") or "").rstrip("/")
 
-HOP_HEADERS = {
+REQUEST_EXCLUDED_HEADERS = {
+    "host",
+    "connection",
+    "content-length",
+    "accept-encoding",
+}
+
+RESPONSE_EXCLUDED_HEADERS = {
     "host",
     "connection",
     "keep-alive",
@@ -123,7 +130,7 @@ def _clean_headers(headers):
     return {
         k: v
         for k, v in headers.items()
-        if k.lower() not in HOP_HEADERS
+        if k.lower() not in REQUEST_EXCLUDED_HEADERS
     }
 
 
@@ -143,13 +150,17 @@ def _log(level, msg, **data):
 # -----------------------------------------------------------------------------
 
 def _to_response(upstream: requests.Response) -> Response:
-    resp = Response(upstream.content, status=upstream.status_code)
+    response_headers = [
+        (k, v)
+        for k, v in upstream.headers.items()
+        if k.lower() not in RESPONSE_EXCLUDED_HEADERS
+    ]
 
-    for k, v in upstream.headers.items():
-        if k.lower() not in HOP_HEADERS:
-            resp.headers[k] = v
-
-    return resp
+    return Response(
+        response=upstream.content,
+        status=upstream.status_code,
+        headers=response_headers,
+    )
 
 
 # -----------------------------------------------------------------------------
