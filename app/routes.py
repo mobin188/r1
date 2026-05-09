@@ -150,11 +150,19 @@ def _log(level, msg, **data):
 # -----------------------------------------------------------------------------
 
 def _to_response(upstream: requests.Response) -> Response:
+
     response_headers = [
         (k, v)
         for k, v in upstream.headers.items()
         if k.lower() not in RESPONSE_EXCLUDED_HEADERS
     ]
+
+    # RFC-compliant empty-body responses
+    if upstream.status_code in (204, 205, 304):
+        return Response(
+            status=upstream.status_code,
+            headers=response_headers,
+        )
 
     return Response(
         response=upstream.content,
