@@ -133,11 +133,23 @@ def _build_url(base: str, path: str) -> str:
     return urljoin(base + "/", path.lstrip("/"))
 
 
+ALLOWED_REQUEST_HEADERS = {
+    "accept",
+    "accept-language",
+    "authorization",
+    "cache-control",
+    "content-type",
+    "if-none-match",
+    "pragma",
+    "user-agent",
+    "x-request-id",
+}
+
 def _clean_headers(headers):
     return {
         k: v
         for k, v in headers.items()
-        if k.lower() not in REQUEST_EXCLUDED_HEADERS
+        if k.lower() in ALLOWED_REQUEST_HEADERS
     }
 
 
@@ -238,7 +250,7 @@ def proxy(path):
 
         return jsonify(error="Upstream timeout", trace_id=trace_id), 504
 
-    except requests.RequestException:
+    except requests.RequestException as exc:
         _record_failure(backend_name)
 
         _log(
@@ -247,9 +259,17 @@ def proxy(path):
             trace_id=trace_id,
             backend=backend_name,
             path=path,
+            error=str(exc),
+            error_type=type(exc).__name__,
         )
 
-        return jsonify(error="Upstream unavailable", trace_id=trace_id), 502
+        current_app.logger.exception(exc)
+
+        return jsonify(
+            error="Upstream unavailable",
+            trace_id=trace_id,
+            details=str(exc),
+        ), 502
 
 # -----------------------------------------------------------------------------
 # HEALTH CHECK (Production Ready)
