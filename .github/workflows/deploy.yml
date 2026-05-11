@@ -1,79 +1,20 @@
-name: Deploy to VPS
+- name: Deploy application
+  env:
+    VPS_HOST: ${{ secrets.VPS_HOST }}
+    VPS_USER: ${{ secrets.VPS_USER }}
+    VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+    VPS_PORT: ${{ secrets.VPS_PORT }}
+  run: |
+    sshpass -p "$VPS_PASSWORD" ssh \
+      -p "$VPS_PORT" \
+      "$VPS_USER@$VPS_HOST" << 'EOF'
 
-on:
-  push:
-    branches:
-      - main
+      set -e
 
-concurrency:
-  group: production-deploy
-  cancel-in-progress: true
+      cd /var/www/r1
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
+      chmod +x scripts/deploy.sh
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      ./scripts/deploy.sh
 
-      - name: Install sshpass
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y sshpass
-
-      - name: Add VPS to known hosts
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts
-
-      - name: Sync project files to VPS
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-        run: |
-          sshpass -p "$VPS_PASSWORD" rsync -az --delete \
-            --exclude ".git" \
-            --exclude ".github" \
-            --exclude "__pycache__" \
-            --exclude ".pytest_cache" \
-            --exclude ".venv" \
-            --exclude "node_modules" \
-            -e "ssh -p $VPS_PORT" \
-            ./ "$VPS_USER@$VPS_HOST:/var/www/r1"
-
-      - name: Deploy application
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
-        run: |
-          sshpass -p "$VPS_PASSWORD" ssh \
-            -p "$VPS_PORT" \
-            "$VPS_USER@$VPS_HOST" << 'EOF'
-
-            set -e
-
-            cd /var/www/r1
-
-            docker compose down
-
-            docker compose pull || true
-
-            docker compose up -d --build
-
-            docker image prune -f
-
-          EOF
-
-      - name: Health check
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-        run: |
-          curl --fail "http://$VPS_HOST:5000/health" || exit 1
+    EOF
