@@ -1,34 +1,11 @@
 #!/usr/bin/env bash
 
-set -Eeuo pipefail
+set -e
 
-IMAGE_TAG="${1:-latest}"
+cd /var/www/r1
 
-echo "Deploying image tag: ${IMAGE_TAG}"
+docker compose pull || true
 
-export IMAGE_TAG
+docker compose up -d --build
 
-docker compose -f docker-compose.prod.yml pull
-
-docker compose -f docker-compose.prod.yml up -d
-
-echo "Waiting for health check..."
-
-for i in {1..20}; do
-    STATUS=$(docker inspect \
-        --format='{{json .State.Health.Status}}' \
-        r1-web 2>/dev/null || true)
-
-    if [[ "$STATUS" == "\"healthy\"" ]]; then
-        echo "Deployment successful"
-        exit 0
-    fi
-
-    sleep 2
-done
-
-echo "Deployment failed"
-
-docker compose -f docker-compose.prod.yml logs --tail=50
-
-exit 1
+docker image prune -f
