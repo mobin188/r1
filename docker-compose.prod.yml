@@ -1,8 +1,6 @@
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/mobin188/r1:latest
     container_name: r1-web
     restart: unless-stopped
     ports:
