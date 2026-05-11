@@ -1,60 +1,79 @@
-name: CI/CD - Production Deploy
+name: Deploy to VPS
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🚀 Deploy to VPS
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          timeout: 10m
-          script: |
-            echo "========================================"
-            echo "🚀 Starting Full Production Deployment"
-            echo "========================================"
+      - name: Install sshpass
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sshpass
 
-            # Create project directory
-            sudo mkdir -p /var/www/r1
-            sudo chown -R ${{ secrets.VPS_USER }}:${{ secrets.VPS_USER }} /var/www/r1
+      - name: Add VPS to known hosts
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -p "$VPS_PORT" -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync project files to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          sshpass -p "$VPS_PASSWORD" rsync -az --delete \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude "__pycache__" \
+            --exclude ".pytest_cache" \
+            --exclude ".venv" \
+            --exclude "node_modules" \
+            -e "ssh -p $VPS_PORT" \
+            ./ "$VPS_USER@$VPS_HOST:/var/www/r1"
+
+      - name: Deploy application
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        run: |
+          sshpass -p "$VPS_PASSWORD" ssh \
+            -p "$VPS_PORT" \
+            "$VPS_USER@$VPS_HOST" << 'EOF'
+
+            set -e
+
             cd /var/www/r1
 
-            # Clone or Pull code
-            if [ ! -d ".git" ]; then
-              echo "📥 Cloning repository..."
-              git clone https://github.com/mobin188/r1.git .
-            else
-              echo "📥 Pulling latest changes..."
-              git pull origin main
-            fi
+            docker compose down
 
-            # Ensure .env exists
-            if [ ! -f ".env" ]; then
-              echo "⚠️  .env file not found. Copying from example..."
-              cp .env.example .env
-              echo "Please edit /var/www/r1/.env with your SECRET_KEY and other settings!"
-            fi
+            docker compose pull || true
 
-            # Fix Docker permissions
-            echo "🔧 Fixing Docker permissions..."
-            sudo usermod -aG docker ${{ secrets.VPS_USER }} || true
+            docker compose up -d --build
 
-            # Deploy using production compose
-            echo "🛑 Stopping old containers..."
-            docker compose -f docker-compose.prod.yml down --remove-orphans || true
+            docker image prune -f
 
-            echo "🏗️  Building and starting production..."
-            docker compose -f docker-compose.prod.yml up -d --build
+          EOF
 
-            echo "✅ Deployment completed at $(date)"
-            echo "🌐 Check status with: docker compose -f docker-compose.prod.yml ps"
-            echo "📊 Logs: docker compose -f docker-compose.prod.yml logs -f"
+      - name: Health check
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          curl --fail "http://$VPS_HOST:5000/health" || exit 1
