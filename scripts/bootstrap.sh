@@ -129,6 +129,13 @@ fi
 docker system prune -af || true
 
 # ---------------------------------------------------------
+# Docker network setup
+# ---------------------------------------------------------
+if ! docker network inspect mobin-network >/dev/null 2>&1; then
+    docker network create mobin-network
+fi
+
+# ---------------------------------------------------------
 # Build + start
 # ---------------------------------------------------------
 
