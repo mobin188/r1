@@ -52,5 +52,5 @@ jobs:
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
             cd /var/www/r1
-            chmod +x scripts/deploy.sh
-            ./scripts/deploy.sh
+            chmod +x scripts/deploy.sh scripts/rollback.sh
+            ./scripts/deploy.sh "${{ github.sha }}"
