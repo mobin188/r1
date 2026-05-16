@@ -10,6 +10,7 @@ set -Eeuo pipefail
 APP_NAME="r1"
 APP_DIR="/var/www/r1"
 REPO_URL="https://github.com/mobin188/r1.git"
+APP_USER="ubuntu"
 
 echo "======================================="
 echo "R1 VPS Bootstrap"
@@ -58,7 +59,6 @@ systemctl restart docker
 
 # ---------------------------------------------------------
 # Install Docker Compose plugin manually
-# (stable + avoids Ubuntu package conflicts)
 # ---------------------------------------------------------
 
 mkdir -p /usr/local/lib/docker/cli-plugins
@@ -74,6 +74,20 @@ chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 ln -sf \
   /usr/local/lib/docker/cli-plugins/docker-compose \
   /usr/local/bin/docker-compose
+
+# ---------------------------------------------------------
+# Ensure docker group exists
+# ---------------------------------------------------------
+
+groupadd -f docker
+
+# ---------------------------------------------------------
+# Allow non-root deployment user to access Docker
+# ---------------------------------------------------------
+
+if id "$APP_USER" >/dev/null 2>&1; then
+  usermod -aG docker "$APP_USER"
+fi
 
 # ---------------------------------------------------------
 # Firewall
@@ -104,6 +118,7 @@ mkdir -p /var/www
 
 if [ -d "$APP_DIR/.git" ]; then
   echo "Existing repository detected"
+
   cd "$APP_DIR"
 
   git fetch origin
@@ -115,11 +130,27 @@ fi
 cd "$APP_DIR"
 
 # ---------------------------------------------------------
+# File ownership
+# IMPORTANT:
+# GitHub Actions deploys as ubuntu user.
+# If root owns the repo, deploy.sh cannot chmod/update files.
+# ---------------------------------------------------------
+
+chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+
+# ---------------------------------------------------------
+# Ensure scripts are executable
+# ---------------------------------------------------------
+
+chmod +x scripts/*.sh || true
+
+# ---------------------------------------------------------
 # Environment bootstrap
 # ---------------------------------------------------------
 
 if [ ! -f ".env" ]; then
   cp .env.example .env
+  chown "$APP_USER":"$APP_USER" .env
 fi
 
 # ---------------------------------------------------------
@@ -131,16 +162,16 @@ docker system prune -af || true
 # ---------------------------------------------------------
 # Docker network setup
 # ---------------------------------------------------------
+
 if ! docker network inspect mobin-network >/dev/null 2>&1; then
-    docker network create mobin-network
+  docker network create mobin-network
 fi
 
 # ---------------------------------------------------------
 # Build + start
 # ---------------------------------------------------------
 
-docker compose pull || true
-docker compose up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # ---------------------------------------------------------
 # Health output
@@ -160,5 +191,5 @@ echo "$APP_DIR"
 echo
 echo "Useful commands:"
 echo "cd $APP_DIR"
-echo "docker compose logs -f"
-echo "docker compose ps"
+echo "docker compose -f docker-compose.prod.yml logs -f"
+echo "docker compose -f docker-compose.prod.yml ps"
