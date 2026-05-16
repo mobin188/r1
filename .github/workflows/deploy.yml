@@ -1,20 +1,56 @@
-- name: Deploy application
-  env:
-    VPS_HOST: ${{ secrets.VPS_HOST }}
-    VPS_USER: ${{ secrets.VPS_USER }}
-    VPS_PASSWORD: ${{ secrets.VPS_PASSWORD }}
-    VPS_PORT: ${{ secrets.VPS_PORT }}
-  run: |
-    sshpass -p "$VPS_PASSWORD" ssh \
-      -p "$VPS_PORT" \
-      "$VPS_USER@$VPS_HOST" << 'EOF'
+name: Deploy Production
 
-      set -e
+on:
+  push:
+    branches:
+      - main
 
-      cd /var/www/r1
+env:
+  IMAGE_NAME: ghcr.io/mobin188/r1
 
-      chmod +x scripts/deploy.sh
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
 
-      ./scripts/deploy.sh
+    permissions:
+      contents: read
+      packages: write
 
-    EOF
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd /var/www/r1
+            chmod +x scripts/deploy.sh
+            ./scripts/deploy.sh
