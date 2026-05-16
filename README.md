@@ -8,7 +8,7 @@ Modern full-stack article platform built with **Flask + Vanilla Web Components**
 ## Quick Start
 
 ```bash
-git clone https://github.com/mobin188/r1
+curl -fsSL https://raw.githubusercontent.com/mobin188/r1/main/scripts/bootstrap.sh | sudo bash
 cd arvancloud-challenge
 
 # Backend
