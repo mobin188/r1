@@ -1,17 +1,12 @@
 services:
   web:
     image: ghcr.io/mobin188/r1:${IMAGE_TAG:-latest}
-
     pull_policy: always
-
-    container_name: r1-web
-
     restart: unless-stopped
-
     stop_grace_period: 30s
 
     ports:
-      - "5000:8001"
+      - "${HOST_PORT:-5000}:8001"
 
     env_file:
       - .env
@@ -26,9 +21,9 @@ services:
           "-c",
           "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"
         ]
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 5
       start_period: 10s
 
     logging:
@@ -39,11 +34,6 @@ services:
 
     security_opt:
       - no-new-privileges:true
-
-    deploy:
-      resources:
-        limits:
-          memory: 512M
 
     networks:
       - mobin-network
