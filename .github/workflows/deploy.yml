@@ -1,4 +1,4 @@
-name: Deploy Production
+name: Deploy to Production
 
 on:
   push:
@@ -6,11 +6,12 @@ on:
       - main
 
 env:
-  IMAGE_NAME: ghcr.io/mobin188/r1
+  IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment: production   # TODO: Add protection rules in GitHub Settings
 
     permissions:
       contents: read
@@ -43,14 +44,24 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Deploy to VPS
+      - name: Deploy to VPS (Blue/Green)
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
+          key: ${{ secrets.VPS_SSH_KEY }}          # Recommended: Use SSH key instead of password
+          port: ${{ secrets.VPS_PORT || '22' }}
           script: |
+            set -e
+            echo "🚀 Starting deployment at $(date)"
             cd /var/www/r1
-            chmod +x scripts/deploy.sh scripts/rollback.sh
-            ./scripts/deploy.sh "${{ github.sha }}"
+
+            chmod +x scripts/deploy.sh
+
+            # Deploy using the short SHA for traceability
+            ./scripts/deploy.sh "${{ steps.meta.outputs.version || github.sha }}"
+
+            echo "✅ Deployment completed successfully"
