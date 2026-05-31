@@ -1,6 +1,7 @@
 # r1 - RealWorld Flask Proxy
 
-A clean, production-ready Flask API proxy with a vanilla Web Components frontend for the RealWorld API specification.
+Production-ready Flask API proxy with a vanilla Web Components interface for the RealWorld API specification.
+
 
 ## Features
 
@@ -22,30 +23,45 @@ cp .env.example .env
 
 # Start with Docker
 docker compose up --build
-Application will be available at http://localhost:5000
-Production Deployment
-1. Bootstrap (Run once on a fresh VPS)
-Bashcurl -fsSL https://raw.githubusercontent.com/mobin188/r1/main/scripts/bootstrap.sh | sudo bash
-2. Add GitHub Repository Secrets
-Go to Settings → Secrets and variables → Actions and add:
+```
 
-VPS_HOST — Your VPS IP or domain
-VPS_USER — SSH username (recommended: non-root)
-VPS_SSH_KEY — Your private SSH key
+Application will be available at `http://localhost:5000`
 
-3. Deploy
-Every push to main automatically builds and deploys:
-Bashgit push origin main
-Available Scripts
+## Production Deployment
 
-scripts/bootstrap.sh — Initial VPS setup (one command)
-scripts/deploy.sh — Blue/Green deployment
-scripts/rollback.sh — Safe rollback to previous version
+### 1. Bootstrap (Run once on a fresh VPS)
 
-Project Structure
-text├── .github/workflows/          # CI/CD pipelines
+```bash
+curl -fsSL https://raw.githubusercontent.com/mobin188/r1/main/scripts/bootstrap.sh | sudo bash
+```
+
+### 2. Add GitHub Repository Secrets
+
+Go to **Settings → Secrets and variables → Actions** and add:
+
+- `VPS_HOST` — Your VPS IP or domain
+- `VPS_USER` — SSH username (recommended: non-root)
+- `VPS_SSH_KEY` — Your private SSH key
+
+### 3. Deploy
+
+Every push to `main` automatically builds and deploys:
+
+```bash
+git push origin main
+```
+
+## Available Scripts
+
+- `scripts/bootstrap.sh` — Initial VPS setup
+- `scripts/deploy.sh` — Blue/Green instance deployment
+- `scripts/rollback.sh` — Safe rollback to previous version
+
+## Project Structure
+
+```
+├── .github/workflows/          # CI/CD pipelines
 ├── scripts/                    # Deployment & maintenance scripts
-├── docker/                     # (if any)
 ├── static/                     # Frontend assets
 ├── templates/                  # Jinja templates
 ├── .env.example
@@ -53,27 +69,21 @@ text├── .github/workflows/          # CI/CD pipelines
 ├── docker-compose.prod.yml
 ├── gunicorn_config.py
 └── README.md
-Blue/Green Deployment
+```
 
-Two isolated environments (blue & green)
-Traffic switched via Nginx
-Health checks before traffic switch
-Easy rollback capability
+## Blue/Green Deployment
 
-Tech Stack
-Backend: Python + Flask + Gunicorn
-Frontend: Vanilla JavaScript + Web Components
-Infrastructure: Docker, Nginx, GitHub Actions, Blue/Green
+- Two isolated environments (blue & green)
+- Traffic switched via Nginx
+- Health checks before traffic switch
+- Easy rollback capability
 
-Production Ready • Secure • Automated
-text---
+## Tech Stack
 
-**Professional Commit Message** (use when committing):
+**Backend**: Python + Flask + Gunicorn
+**Frontend**: Vanilla JavaScript + Web Components
+**Infrastructure**: Docker, Nginx, GitHub Actions
 
-```bash
-docs: overhaul README.md for production-grade documentation
+---
 
-- Complete rewrite with clear deployment workflows
-- Document new automated Blue/Green process
-- Improve structure, readability and professionalism
-- Align with Spotify-level project presentation
+**Production Ready • Secure • Automated**
