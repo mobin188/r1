@@ -2,8 +2,6 @@
 
 A clean, production-ready Flask API proxy with a vanilla Web Components frontend for the RealWorld API specification.
 
-Built with Spotify/Google-level engineering practices: security hardened, automated zero-downtime deployments, and operational simplicity.
-
 ## Features
 
 - Thin, transparent API proxy with request tracing and failover readiness
