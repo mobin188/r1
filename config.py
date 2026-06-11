@@ -1,4 +1,50 @@
 import os
+from dotenv import load_dotenv
 
-DEBUG = True
-SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-key-change-in-production")
+load_dotenv()
+
+class Config:
+    """Base configuration."""
+    SECRET_KEY = os.getenv("SECRET_KEY")
+    if not SECRET_KEY:
+        raise ValueError("SECRET_KEY environment variable is required for security")
+
+    # Environment
+    FLASK_ENV = os.getenv("FLASK_ENV", "production")
+    DEBUG = FLASK_ENV == "development"
+
+    # RealWorld API
+    API_BASE = os.getenv("API_BASE", "https://api.realworld.io/api")
+    FALLBACK_API_BASE = os.getenv("FALLBACK_API_BASE")
+
+    # Proxy behavior
+    REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
+    MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
+
+    # Logging
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+    # Security headers
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+
+
+class DevelopmentConfig(Config):
+    """Development overrides."""
+    DEBUG = True
+    LOG_LEVEL = "DEBUG"
+
+
+class ProductionConfig(Config):
+    """Production overrides."""
+    DEBUG = False
+    LOG_LEVEL = "INFO"
+
+
+def get_config():
+    """Return the appropriate config class."""
+    env = os.getenv("FLASK_ENV", "production").lower()
+    if env == "development":
+        return DevelopmentConfig()
+    return ProductionConfig()
