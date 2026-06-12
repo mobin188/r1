@@ -4,6 +4,9 @@ Flask==3.0.3
 # Production Server
 gunicorn==23.0.0
 
+# Environment Variables
+python-dotenv==1.0.1
+
 # HTTP Client
 requests==2.32.3
 
