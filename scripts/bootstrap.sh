@@ -27,7 +27,12 @@ apt-get install -y curl git nginx docker.io docker-compose-plugin
 # Start and enable Docker
 log "Configuring Docker..."
 systemctl enable --now docker
+# Add current sudo user AND app user to docker group
+log "Adding users to docker group..."
 usermod -aG docker "${SUDO_USER:-$USER}"
+usermod -aG docker "$APP_USER" || true
+# Ensure newgrp / group membership takes effect for this session
+log "Docker group membership updated."
 
 # Create dedicated app user
 if ! id "$APP_USER" &>/dev/null; then
@@ -47,7 +52,7 @@ fi
 
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
-# IMPORTANT FIX: Set execute permissions
+# Set execute permissions
 log "Setting execute permissions on deployment scripts..."
 chmod +x "$APP_DIR/scripts/"*.sh
 
@@ -58,8 +63,15 @@ if [ ! -f "$APP_DIR/.env" ]; then
     log "✅ Created .env from .env.example"
     log "⚠️  IMPORTANT: Please edit $APP_DIR/.env with production values (especially SECRET_KEY)!"
 fi
-
 chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"
+
+# Ensure app user can run Docker commands
+log "Fixing Docker permissions for app user..."
+usermod -aG docker "$APP_USER"
+
+# Create runtime directory for slots
+mkdir -p "$RUNTIME_DIR"
+chown -R "$APP_USER":"$APP_USER" "$RUNTIME_DIR"
 
 # Create runtime directory for slots
 mkdir -p "$RUNTIME_DIR"
