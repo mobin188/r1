@@ -3,14 +3,19 @@ import time
 import logging
 import sys
 
-def create_app():
+
+def create_app(config=None):
+    if config is None:
+        from config import get_config
+        config = get_config()
+
     app = Flask(__name__)
-    app.config.from_pyfile('../config.py')
+    app.config.from_object(config)  # Use class-based config instead of from_pyfile
     app.url_map.strict_slashes = False
 
     # Setup logging to stdout (journalctl)
     handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(logging.DEBUG)
+    handler.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
     formatter = logging.Formatter(
         '[%(asctime)s] %(levelname)s in %(module)s: %(message)s'
     )
@@ -18,7 +23,7 @@ def create_app():
 
     if not app.logger.handlers:
         app.logger.addHandler(handler)
-        app.logger.setLevel(logging.DEBUG)
+        app.logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
 
     # Log each incoming request
     @app.before_request
