@@ -25,15 +25,18 @@ class Config:
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
     # Security headers
-    SESSION_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
+    SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY", "True").lower() in ("true", "1", "yes")
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
 
 
 class DevelopmentConfig(Config):
     """Development overrides."""
     DEBUG = True
     LOG_LEVEL = "DEBUG"
+
+    # Relax security for local HTTP development
+    SESSION_COOKIE_SECURE = False
 
 
 class ProductionConfig(Config):
