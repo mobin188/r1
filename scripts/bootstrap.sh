@@ -46,11 +46,20 @@ else
 fi
 
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
-# Set execute permissions
+
+# IMPORTANT FIX: Set execute permissions
 log "Setting execute permissions on deployment scripts..."
 chmod +x "$APP_DIR/scripts/"*.sh
 
-# Create runtime directory...
+# Create .env from example (for first deployment)
+log "Setting up environment configuration..."
+if [ ! -f "$APP_DIR/.env" ]; then
+    cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+    log "✅ Created .env from .env.example"
+    log "⚠️  IMPORTANT: Please edit $APP_DIR/.env with production values (especially SECRET_KEY)!"
+fi
+
+chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"
 
 # Create runtime directory for slots
 mkdir -p "$RUNTIME_DIR"
