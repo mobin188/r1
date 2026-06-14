@@ -46,6 +46,11 @@ else
 fi
 
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
+# Set execute permissions
+log "Setting execute permissions on deployment scripts..."
+chmod +x "$APP_DIR/scripts/"*.sh
+
+# Create runtime directory...
 
 # Create runtime directory for slots
 mkdir -p "$RUNTIME_DIR"
