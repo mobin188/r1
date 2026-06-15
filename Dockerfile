@@ -29,7 +29,15 @@ USER app
 EXPOSE 5000
 
 # Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000/health', timeout=5)" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
+    CMD python -c "
+import urllib.request
+import sys
+try:
+    urllib.request.urlopen('http://localhost:5000/health', timeout=8)
+except Exception as e:
+    print('Healthcheck failed:', e, file=sys.stderr)
+    sys.exit(1)
+" || exit 1
 
 CMD ["gunicorn", "--config", "gunicorn_config.py", "wsgi:app"]
