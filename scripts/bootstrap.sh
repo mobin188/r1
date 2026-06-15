@@ -73,6 +73,16 @@ fi
 
 chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"
 
+# Pre-create runtime directory and dummy upstream file to prevent nginx start failure
+log "Preparing runtime directory for Nginx..."
+mkdir -p "$RUNTIME_DIR"
+cat > "$RUNTIME_DIR/nginx-upstream.conf" << EOF
+upstream r1_backend {
+    server 127.0.0.1:5000;
+}
+EOF
+chown -R "$APP_USER":"$APP_USER" "$RUNTIME_DIR"
+
 # Ensure app user can run Docker commands
 log "Fixing Docker permissions for app user..."
 usermod -aG docker "$APP_USER"
