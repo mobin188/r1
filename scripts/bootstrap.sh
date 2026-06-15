@@ -56,13 +56,21 @@ chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 log "Setting execute permissions on deployment scripts..."
 chmod +x "$APP_DIR/scripts/"*.sh
 
-# Create .env from example (for first deployment)
+# Create .env from example (for initial deployment)
 log "Setting up environment configuration..."
 if [ ! -f "$APP_DIR/.env" ]; then
     cp "$APP_DIR/.env.example" "$APP_DIR/.env"
     log "✅ Created .env from .env.example"
-    log "⚠️  IMPORTANT: Please edit $APP_DIR/.env with production values (especially SECRET_KEY)!"
 fi
+
+# Generate strong SECRET_KEY if missing or still using placeholder
+log "Generating secure SECRET_KEY if needed..."
+if ! grep -qE '^SECRET_KEY=.{20,}' "$APP_DIR/.env" || grep -q "your-super-secret-key-here" "$APP_DIR/.env"; then
+    NEW_SECRET=$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')
+    sed -i "s|^SECRET_KEY=.*|SECRET_KEY=$NEW_SECRET|" "$APP_DIR/.env"
+    log "✅ Generated strong SECRET_KEY (production-ready)"
+fi
+
 chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"
 
 # Ensure app user can run Docker commands
