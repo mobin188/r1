@@ -88,11 +88,16 @@ fi
 # Clone repo
 log "Setting up application directory..."
 mkdir -p "$APP_DIR"
-if [ ! -d "$APP_DIR/.git" ]; then
-    git clone https://github.com/mobin188/r1.git "$APP_DIR"
+
+if [ -d "$APP_DIR/.git" ]; then
+    log "Repository exists, pulling latest changes..."
+    cd "$APP_DIR" && git pull origin main || true
 else
-    cd "$APP_DIR" && git pull origin main
+    log "Cloning fresh repository..."
+    rm -rf "$APP_DIR"  # Force clean if something is there
+    git clone https://github.com/mobin188/r1.git "$APP_DIR"
 fi
+
 chown -R "$APP_USER":"$APP_USER" "$APP_DIR"
 
 # Scripts permissions
