@@ -9,7 +9,7 @@ const styleSheet = new CSSStyleSheet()
 styleSheet.replaceSync(`
 :host {
     flex: 1 1;
-    
+
     display: flex;
     flex-flow: column nowrap;
     align-items: flex-end;
@@ -17,7 +17,7 @@ styleSheet.replaceSync(`
     min-height: 0;
     max-height: 100%;
     min-width: 850px;
-    
+
     /*#wrapperTable {*/
     /*    flex: 1 1;*/
     /*    width: 100%;*/
@@ -29,21 +29,21 @@ styleSheet.replaceSync(`
             max-height: 100%;
             min-height: 0;
             overflow-y: auto;
-            
+
             width: 100%;
             /*border-collapse: collapse;*/
             /*border-spacing: 0;*/
-            
+
             tr {
                 display: flex;
                 flex-flow: row nowrap;
                 align-items: center;
             }
-            
+
             th, td {
                 padding: var(--space-03) var(--space-03);
                 text-align: start;
-                
+
                 &.colNo {
                     text-align: center;
                     flex: 0 1 48px;
@@ -72,22 +72,26 @@ styleSheet.replaceSync(`
                     padding-bottom: var(--space-01);
                 }
             }
-            
+
             thead {
                 position:sticky;
                 top: 0;
                 z-index: 1;
-                
+
                 background: var(--bg-neutral-default-2-l);
                 border-collapse: collapse;
                 border-bottom: solid 1px var(--border-neutral-default3-l);
-                
+
+                th.colOptions {
+                    visibility: hidden;
+                }
+
                 /*tr {*/
                 /*    display: flex;*/
                 /*    flex-flow: row nowrap;*/
                 /*    align-items: center;*/
                 /*}*/
-                
+
                 /*th {*/
                 /*    padding: var(--space-03) var(--space-03);*/
                 /*    !*padding: var(--space-03) 0;*!*/
@@ -127,14 +131,14 @@ styleSheet.replaceSync(`
                 /*    }*/
                 }
             }
-            
+
             tbody {
                 tr {
                     border-bottom: solid 1px var(--border-neutral-default3-l);
                 }
                 td {
                     // padding: var(--space-02);
-                    
+
                     /*.no-wrapper {*/
                     /*    text-align: center;*/
                     /*    background: var(--bg-neutral-default-2-l);*/
@@ -148,38 +152,38 @@ styleSheet.replaceSync(`
                     /*}*/
                     &.td-article-options {
                         position: relative;
-                        
+
                         .options {
                             position: absolute;
                             right: 0;
                             top: 50%;
                             transform: translate3d(-8%, 22%, 0);
                             z-index: 1;
-                            
+
                             display: flex;
                             flex-flow: column nowrap;
                             align-items: flex-start;
                             padding: var(--space-02) 0;
-                            
-                            overflow: hidden;                        
+
+                            overflow: hidden;
                             visibility: hidden;
                             opacity: 0;
                             transition: 200ms;
-                            
+
                             background-color: var(--bg-neutral-default-1-l);
                             border-radius: var(--borderRadiusLg);
                             box-shadow: 0 4px 16px hsla(0, 0%, 0%, .16);
-                            
+
                             button, a {
                                 width: 100%;
                                 text-align: start;
                                 padding: var(--space-01) var(--space-10) var(--space-02) var(--space-04);
                                 cursor: pointer;
                                 transition: 250ms;
-                                
+
                                 opacity: 1;
                                 color: inherit;
-                                
+
                                  &:hover, &:focus-visible {
                                     background: #EEEEEE;
                                  }
@@ -187,16 +191,16 @@ styleSheet.replaceSync(`
                                     background: #AAAAAA;
                                  }
                             }
-                            
+
                             &.expanded {
                                 visibility: visible;
                                 opacity: 1;
                                 transform: translate3d(-8%, 25%, 0);
-                                
+
                                 button, a {
                                     padding-top: var(--space-02);
                                     opacity: 1;
-                                    
+
                                     &:nth-of-type(1) {
                                         transition: 250ms, padding-top 150ms, opacity 250ms;
                                     }
@@ -209,7 +213,7 @@ styleSheet.replaceSync(`
                     }
                 }
             }
-        }
+        /*}*/
     /*}*/
 }
 `)
@@ -351,8 +355,8 @@ export class ArticleTable extends HTMLElement {
                             </svg>
                         </component-button>
                         <div class="options" data-slug="${a.slug}">
-                            <a href="/articles/edit/${a.slug}" class="txt-body2 btn-option-edit" data-route>Edit</a>                        
-                            <button type="button" class="txt-body2 btn-option-delete" data-delete>Delete</button>                        
+                            <a href="/articles/edit/${a.slug}" class="txt-body2 btn-option-edit" data-route>Edit</a>
+                            <button type="button" class="txt-body2 btn-option-delete" data-delete>Delete</button>
                         </div>
                     </td>
                 </tr>
