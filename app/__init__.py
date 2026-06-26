@@ -2,6 +2,7 @@
 Application factory and core initialization.
 """
 from __future__ import annotations
+import atexit
 import logging
 import sys
 from logging.config import dictConfig
@@ -36,6 +37,39 @@ DEFAULT_LOG_CONFIG = {
     }
 }
 
+
+# Process-level cleanup registration to close shared extensions once at process exit.
+_cleanup_registered = False
+
+
+def _process_cleanup() -> None:
+    """Close long-lived shared resources at process exit (best-effort)."""
+    try:
+        import app.extensions as _ext_local
+
+        http_client = getattr(_ext_local, "http_client", None)
+        if http_client is not None:
+            sess = getattr(http_client, "session", None)
+            if sess is not None:
+                try:
+                    sess.close()
+                    logging.getLogger(__name__).debug("Closed http_client.session at process exit")
+                except Exception:
+                    logging.getLogger(__name__).exception(
+                        "Failed to close http_client.session at process exit"
+                    )
+    except Exception:
+        logging.getLogger(__name__).exception("Unhandled error during process cleanup")
+
+
+def _register_process_cleanup() -> None:
+    global _cleanup_registered
+    if _cleanup_registered:
+        return
+    _cleanup_registered = True
+    atexit.register(_process_cleanup)
+
+
 def create_app(config=None) -> Flask:
     if config is None:
         config = get_config()
@@ -54,7 +88,11 @@ def create_app(config=None) -> Flask:
     httpc = HTTPClient(max_retries=max_retries)
     # Attach to module-level variable so other modules can import app.extensions.http_client
     import app.extensions as _ext
+
     _ext.http_client = httpc
+
+    # register one-time process exit cleanup (keeps session open across requests)
+    _register_process_cleanup()
 
     # Register blueprints
     app.register_blueprint(views_bp)
@@ -68,27 +106,13 @@ def create_app(config=None) -> Flask:
     @app.before_request
     def attach_trace_id():
         # compute trace id and expose on g.trace_id (utils.trace_id provides same)
-        g.trace_id = request.headers.get("X-Request-ID") or str(__import__("uuid").uuid4())
+        g.trace_id = request.headers.get("X-Request-ID") or str(
+            __import__("uuid").uuid4()
+        )
 
-    @app.teardown_appcontext
-    def _teardown_appcontext(exception=None):
-        """
-        Centralized cleanup for shared runtime extensions.
-        Executed when the application context is torn down (WSGI worker exit, teardown, etc.).
-        """
-        try:
-            http_client = getattr(_ext, "http_client", None)
-            if http_client is not None:
-                sess = getattr(http_client, "session", None)
-                if sess is not None:
-                    try:
-                        sess.close()
-                        app.logger.debug("Closed http_client.session in teardown")
-                    except Exception:
-                        app.logger.exception("Failed to close http_client.session in teardown")
-        except Exception:
-            # Never raise from teardown — just log and continue.
-            app.logger.exception("Unhandled error in app teardown")
+    # NOTE: Do not close global/shared http_client.session in teardown_appcontext.
+    # teardown_appcontext should be used only for request-scoped cleanup. Global
+    # resources are closed once at process exit via the registered atexit handler.
 
     # TODO - Add error handlers here (JSON for /api, HTML for views) (if desired)
 
