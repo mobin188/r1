@@ -4,7 +4,7 @@ Uses the HTTPClient from app.extensions and the CircuitBreaker to manage upstrea
 """
 from __future__ import annotations
 import time
-from typing import Tuple
+from typing import Tuple, Optional
 
 from flask import Blueprint, jsonify, request, Response, current_app
 from werkzeug.datastructures import Headers
@@ -67,8 +67,9 @@ def proxy(path: str):
     headers["X-Request-ID"] = tid
 
     # Ensure we have an HTTP client
-    client: HTTPClient = http_client
+    client: Optional[HTTPClient] = http_client
     if client is None:
+        current_app.logger.error("proxy: http_client not configured")
         return jsonify(error="HTTP client not configured", trace_id=tid), 500
 
     start = time.time()
