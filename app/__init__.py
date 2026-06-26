@@ -70,6 +70,26 @@ def create_app(config=None) -> Flask:
         # compute trace id and expose on g.trace_id (utils.trace_id provides same)
         g.trace_id = request.headers.get("X-Request-ID") or str(__import__("uuid").uuid4())
 
+    @app.teardown_appcontext
+    def _teardown_appcontext(exception=None):
+        """
+        Centralized cleanup for shared runtime extensions.
+        Executed when the application context is torn down (WSGI worker exit, teardown, etc.).
+        """
+        try:
+            http_client = getattr(_ext, "http_client", None)
+            if http_client is not None:
+                sess = getattr(http_client, "session", None)
+                if sess is not None:
+                    try:
+                        sess.close()
+                        app.logger.debug("Closed http_client.session in teardown")
+                    except Exception:
+                        app.logger.exception("Failed to close http_client.session in teardown")
+        except Exception:
+            # Never raise from teardown — just log and continue.
+            app.logger.exception("Unhandled error in app teardown")
+
     # TODO - Add error handlers here (JSON for /api, HTML for views) (if desired)
 
     return app
