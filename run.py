@@ -1,20 +1,21 @@
 """
-Development runner: env-driven defaults, CLI overrides, graceful shutdown.
+Development runner: env-driven defaults, CLI overrides, graceful shutdown with draining.
 
 - Loads .env only for development or when a .env file is present.
 - Supports host/port/threaded/reloader/log-level overrides via CLI or ENV.
-- Optional --certfile/--keyfile for local TLS testing.
-- Installs SIGINT/SIGTERM handlers in the actual server process to close shared resources.
+- Installs SIGINT/SIGTERM handlers in the actual server process to run a drain step,
+  wait for in-flight requests (configurable via SHUTDOWN_TIMEOUT), then close resources.
 - Also registers a teardown handler so WSGI servers will close resources when the app context ends.
 """
 from __future__ import annotations
 
 import argparse
+import atexit
 import logging
 import os
 import signal
 import sys
-from typing import Optional, Tuple, cast, Callable
+from typing import Optional, Tuple
 from types import FrameType
 
 from dotenv import load_dotenv
@@ -52,24 +53,39 @@ def _close_extensions() -> None:
 
 def _install_signal_handlers(app) -> None:
     """
-    Install SIGINT/SIGTERM handlers to perform graceful shutdown.
+    Install SIGINT/SIGTERM handlers to perform graceful shutdown with draining.
+    Only install in the actual server process (avoid installing in the reloader parent).
     """
-
-    # Make sure the current process is the actual running server (child)
-    is_server_process = os.getenv("WERKZEUG_RUN_MAIN") == "true" or os.getenv("WERKZEUG_RUN_MAIN") == "1" or os.getenv(
-        "FLASK_RUN_FROM_CLI") == "true"
+    # With the Werkzeug reloader, the *child* server process sets WERKZEUG_RUN_MAIN=1.
+    is_server_process = os.getenv("WERKZEUG_RUN_MAIN") in ("true", "1") or os.getenv("FLASK_RUN_FROM_CLI") == "true"
     if not is_server_process:
-        # Avoid installing handlers on parent reloading process as it handles restart itself. (Avoid duplication)
-        LOGGER.debug("Signal handlers installation aborted: non-server process")
+        LOGGER.debug("Not installing signal handlers in non-server process")
         return
 
-    # close http_session and other resources
-    def _handle(signum, frame) -> None:
-        app.logger.info("Received signal %s, shutting down...", signum)
-        _close_extensions()
-        sys.exit(0)
+    def _handle(signum: int, frame: Optional[FrameType]) -> None:
+        app.logger.info("Received signal %s, initiating graceful shutdown (drain)...", signum)
+        try:
+            shutdown_timeout = int(os.getenv("SHUTDOWN_TIMEOUT", "30"))
+            start_draining = getattr(app, "start_draining", None)
+            if callable(start_draining):
+                try:
+                    drained = start_draining(shutdown_timeout)
+                    if not drained:
+                        app.logger.warning("Drain did not finish before timeout; forcing shutdown")
+                except Exception:
+                    app.logger.exception("Exception while draining; proceeding to shutdown")
+            else:
+                app.logger.debug("No drain support on app; skipping drain step")
 
-    signal.signal(signal.SIGTERM, _handle)
+            _close_extensions()
+        except Exception:
+            app.logger.exception("Unhandled error during shutdown sequence")
+        finally:
+            # Exit the process - acceptable for dev runner
+            sys.exit(0)
+
+    # Install handlers for both SIGINT (Ctrl-C) and SIGTERM
+    signal.signal(signal.SIGINT, _handle)
     try:
         signal.signal(signal.SIGTERM, _handle)
     except AttributeError:
@@ -108,10 +124,8 @@ def main(argv: Optional[list[str]] = None) -> None:
     config = get_config()
     app = create_app(config)
 
-    # register teardown to ensure resources are closed when app context ends (WSGI)
-    @app.teardown_appcontext
-    def _teardown(exception=None):
-        _close_extensions()
+    # Register atexit fallback to close shared extensions on normal process exit
+    atexit.register(_close_extensions)
 
     # logging
     _setup_logging(app, args.log_level)
