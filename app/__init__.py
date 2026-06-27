@@ -74,7 +74,7 @@ def create_app(config=None) -> Flask:
     if config is None:
         config = get_config()
 
-    app = Flask(__name__, static_folder="app/static", template_folder="app/templates")
+    app = Flask(__name__, static_folder="static", template_folder="templates")
     # Load config object (populates app.config mapping)
     app.config.from_object(config)
 
