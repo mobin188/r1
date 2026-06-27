@@ -7,7 +7,6 @@ import logging
 import os
 import sys
 from logging.config import dictConfig
-from typing import Optional
 
 from flask import Flask, g, request
 
