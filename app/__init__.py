@@ -11,7 +11,7 @@ from logging.config import dictConfig
 from flask import Flask, g, request
 
 from config import get_config
-from app.extensions import HTTPClient, http_client as global_http_client
+from app import extensions
 from app.views import bp as views_bp
 from app.proxy import bp as proxy_bp
 from app.health import bp as health_bp
@@ -45,39 +45,23 @@ _cleanup_registered = False
 def _process_cleanup() -> None:
     """Close long-lived shared resources at process exit (best-effort)."""
     try:
-        import app.extensions as _ext_local
-
-        http_client = getattr(_ext_local, "http_client", None)
-        if http_client is not None:
-            sess = getattr(http_client, "session", None)
-            if sess is not None:
-                try:
-                    sess.close()
-                    logging.getLogger(__name__).debug("Closed http_client.session at process exit")
-                except Exception:
-                    logging.getLogger(__name__).exception(
-                        "Failed to close http_client.session at process exit"
-                    )
+        if extensions.http_client is not None:
+            try:
+                extensions.http_client.close()
+                logging.getLogger(__name__).debug("Closed http_client session at process exit")
+            except Exception:
+                logging.getLogger(__name__).exception("Failed to close http_client session at process exit")
     except Exception:
         logging.getLogger(__name__).exception("Unhandled error during process cleanup")
 
 
 def _register_process_cleanup() -> None:
+    """Register process-exit cleanup via atexit (runs once per process)."""
     global _cleanup_registered
     if _cleanup_registered:
         return
     _cleanup_registered = True
     atexit.register(_process_cleanup)
-
-
-def _init_http_client(app: Flask) -> None:
-    """Initialize HTTPClient and register process cleanup. Called from create_app."""
-    import app.extensions as _ext
-
-    max_retries = int(app.config.get("MAX_RETRIES", 2))
-    _ext.http_client = HTTPClient(max_retries=max_retries)
-    _register_process_cleanup()
-    app.logger.debug("Initialized http_client (max_retries=%d)", max_retries)
 
 
 def create_app(config=None) -> Flask:
@@ -90,15 +74,22 @@ def create_app(config=None) -> Flask:
         static_folder=os.path.join(pkg_dir, "static"),
         template_folder=os.path.join(pkg_dir, "templates"),
     )
-    # Load config object (populates app.config mapping)
     app.config.from_object(config)
 
-    # Logging config
+    # Logging
     dictConfig(DEFAULT_LOG_CONFIG)
     app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
 
-    # Initialize shared extensions immediately (safe in child process after reloader fork)
-    _init_http_client(app)
+    # Initialize shared extensions
+    max_retries = int(app.config.get("MAX_RETRIES", 2))
+    extensions.http_client = extensions.configure_session(max_retries=max_retries)
+
+    fail_threshold = int(app.config.get("FAIL_THRESHOLD", 3))
+    cooldown_sec = int(app.config.get("COOLDOWN_SEC", 10))
+    extensions.circuit_breaker = extensions.CircuitBreaker(fail_threshold=fail_threshold, cooldown_sec=cooldown_sec)
+
+    # Register process-exit cleanup
+    _register_process_cleanup()
 
     # Register blueprints
     app.register_blueprint(views_bp)
@@ -108,18 +99,9 @@ def create_app(config=None) -> Flask:
     # App start time for uptime reporting
     app._start_time = __import__("time").time()
 
-    # Request wrapper adding trace header from flask.g.trace_id
+    # Request wrapper: attach trace ID
     @app.before_request
     def attach_trace_id():
-        # compute trace id and expose on g.trace_id (utils.trace_id provides same)
-        g.trace_id = request.headers.get("X-Request-ID") or str(
-            __import__("uuid").uuid4()
-        )
-
-    # NOTE: Do not close global/shared http_client.session in teardown_appcontext.
-    # teardown_appcontext should be used only for request-scoped cleanup. Global
-    # resources are closed once at process exit via the registered at exit handler.
-
-    # TODO - Add error handlers here (JSON for /api, HTML for views) (if desired)
+        g.trace_id = request.headers.get("X-Request-ID") or str(__import__("uuid").uuid4())
 
     return app
