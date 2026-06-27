@@ -4,6 +4,7 @@ Application factory and core initialization.
 from __future__ import annotations
 import atexit
 import logging
+import os
 import sys
 from logging.config import dictConfig
 from typing import Optional
@@ -70,11 +71,26 @@ def _register_process_cleanup() -> None:
     atexit.register(_process_cleanup)
 
 
+def _init_http_client(app: Flask) -> None:
+    """Initialize HTTPClient and register process cleanup. Called from create_app."""
+    import app.extensions as _ext
+
+    max_retries = int(app.config.get("MAX_RETRIES", 2))
+    _ext.http_client = HTTPClient(max_retries=max_retries)
+    _register_process_cleanup()
+    app.logger.debug("Initialized http_client (max_retries=%d)", max_retries)
+
+
 def create_app(config=None) -> Flask:
     if config is None:
         config = get_config()
 
-    app = Flask(__name__, static_folder="static", template_folder="templates")
+    pkg_dir = os.path.dirname(__file__)
+    app = Flask(
+        __name__,
+        static_folder=os.path.join(pkg_dir, "static"),
+        template_folder=os.path.join(pkg_dir, "templates"),
+    )
     # Load config object (populates app.config mapping)
     app.config.from_object(config)
 
@@ -82,17 +98,8 @@ def create_app(config=None) -> Flask:
     dictConfig(DEFAULT_LOG_CONFIG)
     app.logger.setLevel(app.config.get("LOG_LEVEL", "INFO"))
 
-    # Initialize shared extensions
-    # Configure HTTP client and attach to app.extensions
-    max_retries = int(app.config.get("MAX_RETRIES", 2))
-    httpc = HTTPClient(max_retries=max_retries)
-    # Attach to module-level variable so other modules can import app.extensions.http_client
-    import app.extensions as _ext
-
-    _ext.http_client = httpc
-
-    # register one-time process exit cleanup (keeps session open across requests)
-    _register_process_cleanup()
+    # Initialize shared extensions immediately (safe in child process after reloader fork)
+    _init_http_client(app)
 
     # Register blueprints
     app.register_blueprint(views_bp)
