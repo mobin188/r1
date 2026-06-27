@@ -45,7 +45,6 @@ class HTTPClient:
         Thin wrapper — identical semantics to requests.Session.request.
         Callers may pass timeout=(connect, read) or timeout=int.
         """
-        logger.debug("HTTPClient.request %s %s kwargs=%s", method, url, {k: v for k, v in kwargs.items() if k != "data"})
         return self.session.request(method, url, **kwargs)
 
 # Shared extension instances (initialized in create_app)
