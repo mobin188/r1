@@ -10,7 +10,6 @@ Development runner: env-driven defaults, CLI overrides, graceful shutdown with d
 from __future__ import annotations
 
 import argparse
-import atexit
 import logging
 import os
 import signal
@@ -123,9 +122,6 @@ def main(argv: Optional[list[str]] = None) -> None:
 
     config = get_config()
     app = create_app(config)
-
-    # Register atexit fallback to close shared extensions on normal process exit
-    atexit.register(_close_extensions)
 
     # logging
     _setup_logging(app, args.log_level)
