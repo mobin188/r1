@@ -119,7 +119,7 @@ def create_app(config=None) -> Flask:
 
     # NOTE: Do not close global/shared http_client.session in teardown_appcontext.
     # teardown_appcontext should be used only for request-scoped cleanup. Global
-    # resources are closed once at process exit via the registered atexit handler.
+    # resources are closed once at process exit via the registered at exit handler.
 
     # TODO - Add error handlers here (JSON for /api, HTML for views) (if desired)
 
