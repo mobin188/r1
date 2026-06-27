@@ -13,13 +13,18 @@ class Config:
     FLASK_ENV = os.getenv("FLASK_ENV", "production")
     DEBUG = FLASK_ENV == "development"
 
-    # RealWorld API
-    API_BASE = os.getenv("API_BASE")
-    FALLBACK_API = os.getenv("FALLBACK_API")
+    # Upstream API configuration
+    API_BASE = os.getenv("API_BASE", "")
+    FALLBACK_API = os.getenv("FALLBACK_API", "")
 
     # Proxy behavior
-    REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
+    REQUEST_TIMEOUT_CONNECT = int(os.getenv("REQUEST_TIMEOUT_CONNECT", "3"))
+    REQUEST_TIMEOUT_READ = int(os.getenv("REQUEST_TIMEOUT_READ", "25"))
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", "2"))
+
+    # Circuit breaker
+    FAIL_THRESHOLD = int(os.getenv("FAIL_THRESHOLD", "3"))
+    COOLDOWN_SEC = int(os.getenv("COOLDOWN_SEC", "10"))
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
