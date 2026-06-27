@@ -7,6 +7,7 @@ from typing import Dict
 
 from flask import request, g
 
+# Headers allowed through the proxy (whitelist)
 ALLOWED_REQUEST_HEADERS = {
     "accept",
     "accept-language",
@@ -19,6 +20,7 @@ ALLOWED_REQUEST_HEADERS = {
     "x-request-id",
 }
 
+# Hop-by-hop headers excluded from responses (RFC 7230)
 RESPONSE_EXCLUDED_HEADERS = {
     "host",
     "connection",
@@ -33,15 +35,27 @@ RESPONSE_EXCLUDED_HEADERS = {
     "content-encoding",
 }
 
+
 def clean_request_headers(headers) -> Dict[str, str]:
     """
-    Return a copy of headers but only with allowed keys.
+    Return a copy of headers with only whitelisted keys.
+
+    Args:
+        headers: Werkzeug Headers object from Flask request.
+
+    Returns:
+        Dict of filtered headers suitable for upstream requests.
     """
     return {k: v for k, v in headers.items() if k.lower() in ALLOWED_REQUEST_HEADERS}
 
+
 def trace_id() -> str:
     """
-    Obtain or create a per-request trace id (X-Request-ID). Stored on flask.g.
+    Obtain or create a per-request trace ID (X-Request-ID).
+    Stores it on flask.g for access throughout the request lifetime.
+
+    Returns:
+        Unique trace ID string.
     """
     if getattr(g, "trace_id", None):
         return g.trace_id
