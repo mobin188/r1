@@ -14,8 +14,8 @@ class Config:
     DEBUG = FLASK_ENV == "development"
 
     # RealWorld API
-    API_BASE = os.getenv("API_BASE", "https://api.realworld.io/api")
-    FALLBACK_API_BASE = os.getenv("FALLBACK_API_BASE")
+    API_BASE = os.getenv("API_BASE")
+    FALLBACK_API = os.getenv("FALLBACK_API")
 
     # Proxy behavior
     REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "10"))
