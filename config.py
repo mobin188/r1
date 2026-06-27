@@ -24,6 +24,12 @@ class Config:
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
+    # Service metadata
+    SERVICE_NAME = os.getenv("SERVICE_NAME", "r1")
+    VERSION = os.getenv("VERSION", "1.0.0")
+
+    # Health check behavior
+    HEALTH_CHECK_UPSTREAM = os.getenv("HEALTH_CHECK_UPSTREAM", "false").lower() in ("true", "1", "yes")
     # Security headers
     SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True").lower() in ("true", "1", "yes")
     SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE_HTTPONLY", "True").lower() in ("true", "1", "yes")
