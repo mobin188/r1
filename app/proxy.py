@@ -9,7 +9,8 @@ from typing import Tuple, Optional
 from flask import Blueprint, jsonify, request, Response, current_app
 from werkzeug.datastructures import Headers
 
-from app.extensions import http_client, HTTPClient
+import app.extensions
+from app.extensions import HTTPClient
 from app.utils import clean_request_headers, trace_id, RESPONSE_EXCLUDED_HEADERS
 from app.circuit import CircuitBreaker
 
@@ -67,7 +68,7 @@ def proxy(path: str):
     headers["X-Request-ID"] = tid
 
     # Ensure we have an HTTP client
-    client: Optional[HTTPClient] = http_client
+    client: Optional[HTTPClient] = app.extensions.http_client
     if client is None:
         current_app.logger.error("proxy: http_client not configured")
         return jsonify(error="HTTP client not configured", trace_id=tid), 500
