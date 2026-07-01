@@ -6,6 +6,7 @@ from __future__ import annotations
 import time
 from typing import Tuple
 
+import httpx
 from flask import Blueprint, jsonify, request, Response, current_app
 from werkzeug.datastructures import Headers
 
@@ -36,8 +37,8 @@ def _build_url(base: str, path: str) -> str:
     return f"{base.rstrip('/')}/{path.lstrip('/')}" if base else ""
 
 
-def _to_flask_response(upstream_response) -> Response:
-    """Convert requests.Response to Flask Response, filtering hop-by-hop headers."""
+def _to_flask_response(upstream_response: httpx.Response) -> Response:
+    """Convert httpx.Response to Flask Response, filtering hop-by-hop headers."""
     headers = Headers()
     for k, v in upstream_response.headers.items():
         if k.lower() not in RESPONSE_EXCLUDED_HEADERS:
@@ -62,11 +63,9 @@ def proxy(path: str):
         current_app.logger.error("proxy: no upstream configured (trace_id=%s)", tid)
         return jsonify(error="Upstream not configured", trace_id=tid), 503
 
-    # Prepare headers
     headers = clean_request_headers(request.headers)
     headers["X-Request-ID"] = tid
 
-    # Get HTTP client and circuit breaker
     http_client = app.extensions.http_client
     circuit = app.extensions.circuit_breaker
 
@@ -83,10 +82,9 @@ def proxy(path: str):
             method=request.method,
             url=url,
             params=request.args,
-            data=request.get_data(cache=True),
+            content=request.get_data(cache=True),
             headers=headers,
-            timeout=(connect_timeout, read_timeout),
-            allow_redirects=False,
+            timeout=httpx.Timeout(connect=connect_timeout, read=read_timeout, write=5.0, pool=5.0),
         )
 
         latency = round(time.time() - start, 4)
@@ -103,7 +101,7 @@ def proxy(path: str):
 
         return _to_flask_response(upstream)
 
-    except http_client.exceptions.Timeout:
+    except httpx.TimeoutException:
         circuit.record_failure(backend_name)
         current_app.logger.warning("proxy_timeout trace_id=%s backend=%s path=%s", tid, backend_name, path)
         return jsonify(error="Upstream timeout", trace_id=tid), 504

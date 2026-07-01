@@ -1,43 +1,40 @@
 """
 Application extensions and shared runtime objects.
 
-Keep initialization minimal here; concrete initialization happens in create_app()
-Minimal initialization, deferred to create_app()
+Keep initialization minimal here; full initialization happens in create_app()
 """
 from __future__ import annotations
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util import Retry
+import time
+
+import httpx
 
 # Shared extension instances (initialized in create_app)
-http_client: requests.Session | None = None
+http_client: httpx.Client | None = None
 circuit_breaker = None  # type: CircuitBreaker | None
 
 
-def configure_session(max_retries: int = 2, backoff_factor: float = 0.3, pool_maxsize: int = 10) -> requests.Session:
+def configure_session(max_retries: int = 2, backoff_factor: float = 0.3, pool_maxsize: int = 10) -> httpx.Client:
     """
-    Create and configure a requests.Session with retry logic and connection pooling.
+    Create and configure an httpx.Client with retry logic and connection pooling.
 
     Args:
         max_retries: Number of retry attempts on 5xx errors.
-        backoff_factor: Exponential backoff factor between retries.
+        backoff_factor: Exponential backoff factor between retries (unused by httpx natively,
+                        kept for API compatibility — use a retry transport if needed).
         pool_maxsize: Maximum connections per host.
 
     Returns:
-        Configured requests.Session ready for use.
+        Configured httpx.Client ready for use.
     """
-    session = requests.Session()
-    retry = Retry(
-        total=max_retries,
-        backoff_factor=backoff_factor,
-        status_forcelist=(500, 502, 503, 504),
-        allowed_methods=frozenset(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]),
-        raise_on_status=False,
+    transport = httpx.HTTPTransport(
+        retries=max_retries,
+        limits=httpx.Limits(
+            max_connections=pool_maxsize * 2,
+            max_keepalive_connections=pool_maxsize,
+            keepalive_expiry=30,
+        ),
     )
-    adapter = HTTPAdapter(max_retries=retry, pool_maxsize=pool_maxsize)
-    session.mount("https://", adapter)
-    session.mount("http://", adapter)
-    return session
+    return httpx.Client(transport=transport, follow_redirects=False)
 
 
 class CircuitBreaker:
@@ -54,7 +51,6 @@ class CircuitBreaker:
 
     def record_failure(self, name: str) -> None:
         """Record a failure for the named backend."""
-        import time
         if name not in self._states:
             self._states[name] = {"count": 0, "last_fail": 0.0}
         self._states[name]["count"] += 1
@@ -69,11 +65,9 @@ class CircuitBreaker:
 
     def is_available(self, name: str) -> bool:
         """Check if the named backend is available (not in cooldown)."""
-        import time
         if name not in self._states:
             self._states[name] = {"count": 0, "last_fail": 0.0}
         state = self._states[name]
         if state["count"] < self.fail_threshold:
             return True
-        # Allow retries if cooldown window has expired
         return (time.time() - state["last_fail"]) > self.cooldown_sec

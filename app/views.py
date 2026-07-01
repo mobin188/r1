@@ -3,7 +3,8 @@ HTML view routes for the frontend (login/register/article pages).
 These routes only render templates and should remain free of business logic.
 """
 from __future__ import annotations
-from flask import Blueprint, render_template, redirect
+from flask import Blueprint, render_template, redirect, send_from_directory, current_app
+
 
 bp = Blueprint("views", __name__, template_folder="templates", static_folder="static")
 
@@ -31,3 +32,7 @@ def create():
 @bp.route("/articles/edit/<slug>")
 def edit(slug: str):
     return render_template("edit.html", slug=slug)
+
+@bp.route("/favicon.ico")
+def favicon():
+    return send_from_directory(current_app.static_folder, "favicon.ico", mimetype="image/vnd.microsoft.icon")

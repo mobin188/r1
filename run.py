@@ -41,14 +41,11 @@ def _close_extensions() -> None:
     """Best-effort cleanup of shared resources registered on app.extensions."""
     http_client = getattr(extensions, "http_client", None)
     if http_client is not None:
-        sess = getattr(http_client, "session", None)
-        if sess is not None:
-            try:
-                sess.close()
-                LOGGER.debug("Closed http_client.session")
-            except Exception:
-                LOGGER.exception("Failed to close http_client.session cleanly")
-
+        try:
+            http_client.close()
+            LOGGER.debug("Closed http_client")
+        except Exception:
+            LOGGER.exception("Failed to close http_client cleanly")
 
 def _install_signal_handlers(app) -> None:
     """
